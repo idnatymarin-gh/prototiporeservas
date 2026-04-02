@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studio NM — Sistema de Reservas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #07070B; --bg-surface: #0D0D13; --bg-card: #121219; --bg-hover: #191921;
+      --border: rgba(255,255,255,0.07); --border-gold: rgba(200,169,110,0.3);
+      --gold: #C8A96E; --gold-light: #E2C48A; --gold-dim: rgba(200,169,110,0.1);
+      --text: #EDE8DF; --text-muted: #7A7485; --text-dim: #3F3B4A;
+      --somatic: #9B8FE8; --fiber: #E8709A; --neuro: #5DD4A0;
+      --danger: #E87070; --success: #5DD4A0; --r: 12px; --rs: 8px;
+    }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; overflow: hidden; }
+    #root { height: 100vh; display: flex; }
+    ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* SIDEBAR */
+    .sb { width: 210px; min-width: 210px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 0; }
+    .sb-logo { padding: 0 20px 22px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+    .sb-logo-name { font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 500; line-height: 1; }
+    .sb-logo-sub { font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-top: 3px; }
+    .sb-section { padding: 0 10px; }
+    .sb-label { font-size: 9px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); padding: 0 10px; margin: 14px 0 6px; }
+    .sb-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--rs); cursor: pointer; transition: all 0.14s; color: var(--text-muted); font-size: 13px; user-select: none; }
+    .sb-item:hover { background: var(--bg-card); color: var(--text); }
+    .sb-item.active { background: var(--gold-dim); color: var(--gold-light); font-weight: 500; }
+    .sb-item .ico { font-size: 15px; width: 18px; text-align: center; }
+    .sb-foot { margin-top: auto; padding: 18px 20px 0; border-top: 1px solid var(--border); }
+    .u-chip { display: flex; align-items: center; gap: 9px; }
+    .u-av { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--somatic), var(--gold)); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #07070B; flex-shrink: 0; }
+    .u-name { font-size: 12px; font-weight: 500; }
+    .u-ses { font-size: 11px; color: var(--gold); }
+
+    /* MAIN */
+    .main { flex: 1; overflow-y: auto; padding: 28px 32px; }
+    .ph { margin-bottom: 24px; }
+    .ph-title { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 400; letter-spacing: -0.01em; line-height: 1; }
+    .ph-sub { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+    /* SCHEDULE */
+    .sched-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .day-col { display: flex; flex-direction: column; gap: 7px; }
+    .day-hd { text-align: center; padding: 9px 4px; border-radius: var(--rs); background: var(--bg-card); border: 1px solid var(--border); }
+    .day-hd.today { border-color: var(--border-gold); }
+    .day-nm { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+    .day-dt { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 400; color: var(--text); line-height: 1.2; }
+    .day-hd.today .day-dt { color: var(--gold); }
+    .cc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 10px 10px 13px; cursor: pointer; transition: all 0.18s; position: relative; overflow: hidden; }
+    .cc::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+    .cc.somatic::before { background: var(--somatic); }
+    .cc.fiber::before { background: var(--fiber); }
+    .cc.neuro::before { background: var(--neuro); }
+    .cc:hover { background: var(--bg-hover); border-color: rgba(255,255,255,0.11); transform: translateY(-1px); }
+    .cc.full-card { opacity: 0.45; cursor: default; }
+    .cc.booked-card { border-color: rgba(93,212,160,0.2); }
+    .cc-time { font-size: 10px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+    .cc-name { font-family: 'Cormorant Garamond', serif; font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.2; margin-bottom: 6px; }
+    .cc-badge { display: inline-block; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; margin-bottom: 6px; }
+    .cc-badge.quantum7d { background: var(--gold-dim); color: var(--gold); }
+    .cc-badge.masterclass { background: rgba(155,143,232,0.1); color: var(--somatic); }
+    .cc-booked-tag { font-size: 9px; color: var(--success); font-weight: 700; margin-bottom: 4px; }
+    .cc-meta { display: flex; align-items: center; justify-content: space-between; }
+    .cc-loc { font-size: 9px; color: var(--text-dim); }
+    .cupos-w { display: flex; align-items: center; gap: 4px; }
+    .cdots { display: flex; gap: 2px; }
+    .cdot { width: 4px; height: 4px; border-radius: 50%; background: var(--border); }
+    .cdot.on { background: var(--gold); }
+    .ctext { font-size: 9px; color: var(--text-muted); }
+    .ctext.warn { color: var(--danger); }
+    .ctext.full { color: var(--text-dim); }
+
+    /* LEGEND */
+    .leg { display: flex; gap: 10px; align-items: center; }
+    .ltag { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 4px; }
+    .ltag.somatic { background: rgba(155,143,232,0.1); color: var(--somatic); }
+    .ltag.fiber { background: rgba(232,112,154,0.1); color: var(--fiber); }
+    .ltag.neuro { background: rgba(93,212,160,0.1); color: var(--neuro); }
+
+    /* MODAL */
+    .ov { position: fixed; inset: 0; background: rgba(0,0,0,0.78); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+    .mod { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
+    .mod-title { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 400; color: var(--text); margin-bottom: 3px; }
+    .mod-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 18px; }
+    .div { height: 1px; background: var(--border); margin: 16px 0; }
+    .ir { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+    .il { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+    .iv { font-size: 13px; color: var(--text); font-weight: 500; }
+    .mod-acts { display: flex; gap: 8px; margin-top: 18px; }
+    .mod-acts .bp, .mod-acts .bo { flex: 1; }
+
+    /* BUTTONS */
+    .bp { background: var(--gold); color: #07070B; font-size: 13px; font-weight: 700; padding: 10px 22px; border-radius: var(--rs); border: none; cursor: pointer; transition: all 0.15s; letter-spacing: 0.01em; }
+    .bp:hover { background: var(--gold-light); }
+    .bp:disabled { opacity: 0.35; cursor: default; }
+    .bo { background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 500; padding: 10px 22px; border-radius: var(--rs); border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; }
+    .bo:hover { color: var(--text); border-color: rgba(255,255,255,0.14); }
+
+    /* PACKAGES */
+    .pkg-status { background: var(--bg-card); border: 1px solid var(--border-gold); border-radius: var(--r); padding: 16px 20px; display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+    .psg-icon { font-size: 26px; }
+    .psg-info { flex: 1; }
+    .psg-label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 1px; }
+    .psg-val { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 400; color: var(--text); }
+    .psg-val span { font-size: 13px; color: var(--text-muted); font-family: 'DM Sans', sans-serif; }
+    .pkg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .pkg-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); padding: 20px 16px; cursor: pointer; transition: all 0.2s; position: relative; }
+    .pkg-card:hover { border-color: var(--border-gold); background: var(--bg-hover); }
+    .pkg-card.sel { border-color: var(--gold); background: var(--gold-dim); }
+    .pkg-card.pop::after { content:'Popular'; position:absolute; top:-9px; left:50%; transform:translateX(-50%); background:var(--gold); color:#07070B; font-size:8px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; padding:3px 9px; border-radius:9px; }
+    .pkg-nm { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+    .pkg-ses { font-family: 'Cormorant Garamond', serif; font-size: 40px; font-weight: 300; color: var(--text); line-height: 1; }
+    .pkg-ses span { font-size: 14px; font-weight: 400; color: var(--text-muted); }
+    .pkg-div { height: 1px; background: var(--border); margin: 10px 0; }
+    .pkg-price { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .pkg-valid { font-size: 11px; color: var(--text-muted); }
+    .pay-methods { display: flex; flex-direction: column; gap: 8px; }
+    .pay-m { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all 0.14s; }
+    .pay-m:hover { border-color: var(--border-gold); }
+    .pay-m.sel { border-color: var(--gold); background: var(--gold-dim); }
+    .pay-ico { width: 38px; height: 38px; border-radius: var(--rs); background: var(--bg-surface); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .pay-info h4 { font-size: 13px; font-weight: 500; color: var(--text); }
+    .pay-info p { font-size: 11px; color: var(--text-muted); }
+    .up-area { border: 2px dashed var(--border); border-radius: var(--r); padding: 24px; text-align: center; cursor: pointer; transition: all 0.15s; }
+    .up-area:hover { border-color: var(--border-gold); background: var(--gold-dim); }
+    .up-area.done { border-color: rgba(93,212,160,0.4); background: rgba(93,212,160,0.04); }
+    .up-icon { font-size: 26px; margin-bottom: 7px; }
+    .up-text { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .up-text strong { color: var(--text); }
+    .bank-box { background: var(--bg-card); border-radius: var(--rs); padding: 14px; margin-bottom: 14px; }
+    .bank-box .bk-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+    .bank-row { font-size: 12px; color: var(--text-muted); line-height: 1.8; }
+    .bank-row strong { color: var(--text); }
+
+    /* PROFILE */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+    .stat-c { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; }
+    .stat-v { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 300; color: var(--text); line-height: 1; }
+    .stat-v.g { color: var(--gold); }
+    .stat-l { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-top: 5px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; }
+    .sec-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 400; color: var(--text); margin-bottom: 14px; }
+    .linea-bars { display: flex; flex-direction: column; gap: 9px; }
+    .lb-item { display: flex; align-items: center; gap: 10px; }
+    .lb-lbl { font-size: 11px; color: var(--text-muted); width: 150px; flex-shrink: 0; }
+    .lb-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .lb-fill { height: 100%; border-radius: 3px; transition: width 0.7s ease; }
+    .lb-n { font-size: 12px; font-weight: 600; color: var(--text); width: 18px; text-align: right; }
+    .hist-table { width: 100%; border-collapse: collapse; }
+    .hist-table th { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    .hist-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 12px; color: var(--text-muted); }
+    .hist-table td:first-child { font-weight: 500; color: var(--text); }
+    .sbadge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; }
+    .sbadge.at { background: rgba(93,212,160,0.1); color: var(--success); }
+    .sbadge.ms { background: rgba(232,112,112,0.1); color: var(--danger); }
+    .sbadge.pd { background: var(--gold-dim); color: var(--gold); }
+
+    /* ADMIN */
+    .tabs { display: flex; gap: 2px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--rs); padding: 3px; width: fit-content; margin-bottom: 18px; }
+    .tab { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all 0.14s; }
+    .tab.active { background: var(--bg-hover); color: var(--text); }
+    .pend-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 8px; }
+    .pi-doc { width: 42px; height: 42px; border-radius: 8px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .pi-info { flex: 1; }
+    .pi-user { font-size: 13px; font-weight: 500; color: var(--text); }
+    .pi-det { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .pi-file { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+    .abtn { padding: 6px 14px; border-radius: var(--rs); border: none; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.14s; }
+    .abtn-ok { background: rgba(93,212,160,0.12); color: var(--success); }
+    .abtn-ok:hover { background: rgba(93,212,160,0.22); }
+    .abtn-no { background: rgba(232,112,112,0.1); color: var(--danger); }
+    .abtn-no:hover { background: rgba(232,112,112,0.2); }
+    .cls-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 7px; }
+    .cls-line { width: 3px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+    .cls-info { flex: 1; }
+    .cls-nm { font-size: 13px; font-weight: 500; color: var(--text); }
+    .cls-det { font-size: 11px; color: var(--text-muted); }
+    .cls-cupos { text-align: right; min-width: 60px; }
+    .cls-cupos .cv { font-size: 13px; font-weight: 600; color: var(--text); }
+    .cls-cupos .cl { font-size: 10px; color: var(--text-dim); }
+    .u-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 7px; }
+    .u-avl { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #07070B; flex-shrink: 0; }
+    .u-nm2 { font-size: 13px; font-weight: 500; color: var(--text); }
+    .u-pkg { font-size: 11px; color: var(--text-muted); }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 18px; display: flex; align-items: center; gap: 9px; z-index: 200; animation: su 0.28s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    .toast.ok { border-color: rgba(93,212,160,0.25); }
+    .toast.er { border-color: rgba(232,112,112,0.25); }
+    @keyframes su { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    /* BADGE TYPE */
+    .type-badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+    .type-badge.quantum7d { background: var(--gold-dim); color: var(--gold); }
+    .type-badge.masterclass { background: rgba(155,143,232,0.1); color: var(--somatic); }
+    .linea-inline { display: inline-flex; align-items: center; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+    .linea-inline.somatic { background: rgba(155,143,232,0.1); color: var(--somatic); }
+    .linea-inline.fiber { background: rgba(232,112,154,0.1); color: var(--fiber); }
+    .linea-inline.neuro { background: rgba(93,212,160,0.1); color: var(--neuro); }
+
+    .sec-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .empty { text-align: center; padding: 36px; color: var(--text-dim); }
+    .empty .ei { font-size: 30px; margin-bottom: 10px; }
+    .empty p { font-size: 12px; }
+    .mbadge { background: var(--gold); color: #07070B; font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 8px; margin-left: 4px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const LINEAS = {
+  somatic: { name: "Somatic Training", color: "#9B8FE8" },
+  fiber:   { name: "Fiber Nexus Dynamics", color: "#E8709A" },
+  neuro:   { name: "Neuro Boost Interval", color: "#5DD4A0" },
+};
+
+const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DATES = [24, 25, 26, 27, 28, 29];
+const TODAY = 2;
+
+const INIT_CLASSES = [
+  { id:1,  name:"Quantum Flow",      type:"quantum7d",  linea:"somatic", day:0, time:"07:00", dur:60, location:"Botanical Deck",       cupos:12, booked:8  },
+  { id:2,  name:"Neural Reset",      type:"masterclass",linea:"neuro",   day:0, time:"18:30", dur:55, location:"Salón con Infrarrojo",  cupos:10, booked:10 },
+  { id:3,  name:"Fiber Activate",    type:"masterclass",linea:"fiber",   day:1, time:"06:30", dur:50, location:"Salón con Calor",       cupos:12, booked:5  },
+  { id:4,  name:"Somatic Deep",      type:"quantum7d",  linea:"somatic", day:1, time:"09:00", dur:60, location:"Salón Principal",       cupos:8,  booked:3  },
+  { id:5,  name:"Quantum 7D Full",   type:"quantum7d",  linea:"neuro",   day:2, time:"07:00", dur:75, location:"Botanical Deck",        cupos:12, booked:9  },
+  { id:6,  name:"Fiber Nexus Pro",   type:"masterclass",linea:"fiber",   day:2, time:"19:00", dur:55, location:"Salón con Calor",       cupos:10, booked:4  },
+  { id:7,  name:"Neuro HIIT",        type:"masterclass",linea:"neuro",   day:3, time:"06:30", dur:50, location:"Salón con Infrarrojo",  cupos:12, booked:7  },
+  { id:8,  name:"Somatic Flow",      type:"quantum7d",  linea:"somatic", day:3, time:"18:00", dur:60, location:"Salón Principal",       cupos:8,  booked:8  },
+  { id:9,  name:"Quantum Restore",   type:"quantum7d",  linea:"somatic", day:4, time:"09:00", dur:60, location:"Botanical Deck",        cupos:12, booked:6  },
+  { id:10, name:"Fiber Endurance",   type:"masterclass",linea:"fiber",   day:4, time:"18:30", dur:55, location:"Salón con Calor",       cupos:10, booked:2  },
+  { id:11, name:"Neuro Boost AM",    type:"masterclass",linea:"neuro",   day:5, time:"07:00", dur:50, location:"Salón con Infrarrojo",  cupos:14, booked:11 },
+  { id:12, name:"Quantum 7D Elite",  type:"quantum7d",  linea:"neuro",   day:5, time:"10:00", dur:75, location:"Botanical Deck",        cupos:10, booked:5  },
+];
+
+const PACKAGES = [
+  { id:1, name:"Starter",   sessions:4,   price:180000, validity:"30 días", pop:false },
+  { id:2, name:"Core",      sessions:8,   price:320000, validity:"45 días", pop:true  },
+  { id:3, name:"Elite",     sessions:16,  price:580000, validity:"60 días", pop:false },
+  { id:4, name:"Unlimited", sessions:999, price:750000, validity:"30 días", pop:false },
+];
+
+const INIT_PAYMENTS = [
+  { id:1, user:"Laura Gutiérrez",   pkg:"Core — 8 sesiones",      amount:"$320.000", date:"25 Mar", file:"transferencia_laura.jpg",   status:"pending" },
+  { id:2, user:"Sofía Restrepo",    pkg:"Elite — 16 sesiones",    amount:"$580.000", date:"26 Mar", file:"comprobante_sofia.png",      status:"pending" },
+  { id:3, user:"Valentina Cruz",    pkg:"Starter — 4 sesiones",   amount:"$180.000", date:"26 Mar", file:"pago_valentina.jpg",         status:"pending" },
+];
+
+const HISTORY = [
+  { name:"Quantum Flow",    linea:"somatic", date:"25 Mar", status:"attended" },
+  { name:"Fiber Activate",  linea:"fiber",   date:"24 Mar", status:"attended" },
+  { name:"Neuro HIIT",      linea:"neuro",   date:"20 Mar", status:"attended" },
+  { name:"Quantum 7D Full", linea:"neuro",   date:"19 Mar", status:"attended" },
+  { name:"Quantum Restore", linea:"somatic", date:"17 Mar", status:"missed"   },
+  { name:"Somatic Flow",    linea:"somatic", date:"13 Mar", status:"attended" },
+  { name:"Fiber Nexus Pro", linea:"fiber",   date:"11 Mar", status:"attended" },
+];
+
+function cop(n) { return "$" + n.toLocaleString("es-CO"); }
+
+// ── Cupos ──────────────────────────────────────────────────────────────────
+function Cupos({ cupos, booked }) {
+  const rem = cupos - booked;
+  const pct = booked / cupos;
+  const dots = Math.min(cupos, 5);
+  const filled = Math.round(pct * dots);
+  const cls = rem === 0 ? "full" : rem <= 2 ? "warn" : "";
+  return (
+    <div className="cupos-w">
+      <div className="cdots">
+        {Array.from({length:dots}).map((_,i) =>
+          <div key={i} className={`cdot ${i < filled ? 'on' : ''}`} />
+        )}
+      </div>
+      <span className={`ctext ${cls}`}>
+        {rem === 0 ? "Lleno" : `${rem} cupos`}
+      </span>
+    </div>
+  );
+}
+
+// ── ClassCard ──────────────────────────────────────────────────────────────
+function ClassCard({ cls, onClick, booked }) {
+  const full = cls.booked >= cls.cupos;
+  const locShort = cls.location.replace("Salón con ","").replace("Salón Principal","Salón");
+  return (
+    <div
+      className={`cc ${cls.linea} ${full && !booked ? "full-card" : ""} ${booked ? "booked-card" : ""}`}
+      onClick={() => (!full || booked) ? onClick(cls) : null}
+    >
+      <div className="cc-time">{cls.time} · {cls.dur}min</div>
+      <div className="cc-name">{cls.name}</div>
+      <span className={`cc-badge ${cls.type}`}>{cls.type === "quantum7d" ? "Quantum 7D" : "Master Class"}</span>
+      {booked && <div className="cc-booked-tag">✓ Reservado</div>}
+      <div className="cc-meta">
+        <span className="cc-loc">📍 {locShort}</span>
+        {!booked && <Cupos cupos={cls.cupos} booked={cls.booked} />}
+      </div>
+    </div>
+  );
+}
+
+// ── BookingModal ───────────────────────────────────────────────────────────
+function BookingModal({ cls, sessions, booked, onClose, onConfirm, onCancel }) {
+  const rem = cls.cupos - cls.booked;
+  return (
+    <div className="ov" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="mod">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+              <span className={`type-badge ${cls.type}`}>{cls.type==="quantum7d"?"Quantum 7D":"Master Class"}</span>
+              <span className={`linea-inline ${cls.linea}`}>{LINEAS[cls.linea].name}</span>
+            </div>
+            <div className="mod-title">{cls.name}</div>
+            <div className="mod-sub">Instructora: Naty Marín</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text-muted)",fontSize:20,cursor:"pointer",lineHeight:1,padding:"0 4px"}}>×</button>
+        </div>
+        <div className="div"/>
+        <div className="ir"><span className="il">Día</span><span className="iv">Miércoles, 26 Mar</span></div>
+        <div className="ir"><span className="il">Hora</span><span className="iv">{cls.time} · {cls.dur} min</span></div>
+        <div className="ir"><span className="il">Ubicación</span><span className="iv">{cls.location}</span></div>
+        <div className="ir">
+          <span className="il">Cupos</span>
+          <span className="iv" style={{color: rem<=2&&rem>0?"var(--danger)":undefined}}>
+            {rem===0?"Sin cupos":`${rem} de ${cls.cupos} disponibles`}
+          </span>
+        </div>
+        <div className="div"/>
+        {booked ? (
+          <>
+            <div style={{textAlign:"center",padding:"10px 0",color:"var(--success)",fontSize:13}}>✓ Tienes reserva activa en esta clase</div>
+            <div className="mod-acts">
+              <button className="bo" onClick={onClose}>Cerrar</button>
+              <button style={{flex:1,background:"rgba(232,112,112,0.1)",color:"var(--danger)",border:"none",padding:"10px",borderRadius:8,fontWeight:700,fontSize:13,cursor:"pointer"}} onClick={()=>onCancel(cls)}>Cancelar reserva</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--gold-dim)",borderRadius:8,marginBottom:14}}>
+              <span style={{fontSize:12,color:"var(--text-muted)"}}>Tus sesiones disponibles</span>
+              <span style={{fontFamily:"Cormorant Garamond,serif",fontSize:26,color:sessions>0?"var(--gold)":"var(--danger)"}}>{sessions}</span>
+            </div>
+            {sessions===0 && <div style={{fontSize:12,color:"var(--text-muted)",textAlign:"center",marginBottom:12}}>No tienes sesiones. Adquiere un paquete para reservar.</div>}
+            <div className="mod-acts">
+              <button className="bo" onClick={onClose}>Cancelar</button>
+              {sessions>0
+                ? <button className="bp" onClick={()=>onConfirm(cls)}>Confirmar reserva</button>
+                : <button className="bp" onClick={onClose}>Ver paquetes →</button>
+              }
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PaymentModal ───────────────────────────────────────────────────────────
+function PaymentModal({ pkg, onClose, onSuccess }) {
+  const [method, setMethod] = useState(null);
+  const [step, setStep] = useState(1);
+  const [uploaded, setUploaded] = useState(false);
+
+  const proceed = (m) => { setMethod(m); setStep(2); };
+
+  const handleAction = () => {
+    if (method !== "transfer") {
+      setStep(3);
+      setTimeout(() => onSuccess(pkg, method), 1800);
+    } else if (uploaded) {
+      setStep(3);
+    }
+  };
+
+  return (
+    <div className="ov" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="mod">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div className="mod-title">Adquirir paquete</div>
+            <div className="mod-sub">{pkg.name} · {pkg.sessions===999?"Ilimitado":`${pkg.sessions} sesiones`} · {cop(pkg.price)}</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text-muted)",fontSize:20,cursor:"pointer",lineHeight:1,padding:"0 4px"}}>×</button>
+        </div>
+        <div className="div"/>
+
+        {step===1 && (
+          <>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--text-dim)",marginBottom:10}}>Método de pago</div>
+            <div className="pay-methods">
+              {[
+                {id:"mercadopago", icon:"🔵", title:"MercadoPago", desc:"Pago inmediato · link seguro"},
+                {id:"bold",        icon:"⚡", title:"Bold",        desc:"Tarjeta crédito / débito"},
+                {id:"transfer",    icon:"🏦", title:"Transferencia", desc:"Envía comprobante · aprobación manual"},
+              ].map(m => (
+                <div key={m.id} className="pay-m" onClick={()=>proceed(m.id)}>
+                  <div className="pay-ico">{m.icon}</div>
+                  <div className="pay-info"><h4>{m.title}</h4><p>{m.desc}</p></div>
+                  <span style={{color:"var(--gold)",fontSize:14,marginLeft:"auto"}}>›</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step===2 && method!=="transfer" && (
+          <>
+            <div style={{textAlign:"center",padding:"18px 0"}}>
+              <div style={{fontSize:36,marginBottom:10}}>{method==="mercadopago"?"🔵":"⚡"}</div>
+              <div style={{fontFamily:"Cormorant Garamond,serif",fontSize:22,color:"var(--text)",marginBottom:5}}>
+                {method==="mercadopago"?"MercadoPago":"Bold"}
+              </div>
+              <div style={{fontSize:12,color:"var(--text-muted)",marginBottom:18}}>Serás redirigido al portal de pago seguro</div>
+              <div style={{padding:"12px",background:"var(--bg-card)",borderRadius:8,marginBottom:16}}>
+                <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:3}}>Total a pagar</div>
+                <div style={{fontFamily:"Cormorant Garamond,serif",fontSize:32,color:"var(--gold)"}}>{cop(pkg.price)}</div>
+              </div>
+            </div>
+            <div className="mod-acts">
+              <button className="bo" onClick={()=>setStep(1)}>← Volver</button>
+              <button className="bp" onClick={handleAction}>Ir al portal de pago</button>
+            </div>
+          </>
+        )}
+
+        {step===2 && method==="transfer" && (
+          <>
+            <div className="bank-box">
+              <div className="bk-label">Datos bancarios</div>
+              <div className="bank-row">
+                <strong>Banco:</strong> Bancolombia<br/>
+                <strong>Cuenta:</strong> Ahorros 123-456789-00<br/>
+                <strong>A nombre de:</strong> Studio NM SAS<br/>
+                <strong>Valor:</strong> {cop(pkg.price)}
+              </div>
+            </div>
+            <div className={`up-area ${uploaded?"done":""}`} onClick={()=>setUploaded(true)}>
+              <div className="up-icon">{uploaded?"✅":"📎"}</div>
+              <div className="up-text">
+                {uploaded
+                  ? <><strong style={{color:"var(--success)"}}>Comprobante cargado</strong><br/>comprobante_pago.jpg</>
+                  : <><strong>Adjunta tu comprobante</strong><br/>Click para subir screenshot de la transferencia</>
+                }
+              </div>
+            </div>
+            {uploaded && <div style={{fontSize:11,color:"var(--text-muted)",textAlign:"center",marginTop:9}}>Revisión máx. 24h. Recibirás confirmación una vez aprobado.</div>}
+            <div className="mod-acts" style={{marginTop:14}}>
+              <button className="bo" onClick={()=>setStep(1)}>← Volver</button>
+              <button className="bp" onClick={handleAction} disabled={!uploaded}>Enviar comprobante</button>
+            </div>
+          </>
+        )}
+
+        {step===3 && method!=="transfer" && (
+          <div style={{textAlign:"center",padding:"22px 0"}}>
+            <div style={{fontSize:38,marginBottom:10}}>✅</div>
+            <div style={{fontFamily:"Cormorant Garamond,serif",fontSize:24,color:"var(--text)",marginBottom:6}}>¡Pago procesado!</div>
+            <div style={{fontSize:12,color:"var(--text-muted)"}}>Paquete <strong style={{color:"var(--gold)"}}>{pkg.name}</strong> activado correctamente.</div>
+          </div>
+        )}
+
+        {step===3 && method==="transfer" && (
+          <div style={{textAlign:"center",padding:"22px 0"}}>
+            <div style={{fontSize:38,marginBottom:10}}>⏳</div>
+            <div style={{fontFamily:"Cormorant Garamond,serif",fontSize:24,color:"var(--text)",marginBottom:6}}>Comprobante enviado</div>
+            <div style={{fontSize:12,color:"var(--text-muted)",lineHeight:1.7}}>Tu pago está en revisión.<br/>Recibirás confirmación cuando sea aprobado.</div>
+            <button className="bp" style={{marginTop:20}} onClick={onClose}>Entendido</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function Toast({ msg, type }) {
+  return (
+    <div className={`toast ${type==="success"?"ok":"er"}`}>
+      <span>{type==="success"?"✅":"❌"}</span>
+      <span style={{fontSize:13,color:"var(--text)"}}>{msg}</span>
+    </div>
+  );
+}
+
+// ── VIEW: Schedule ─────────────────────────────────────────────────────────
+function ScheduleView({ classes, setClasses, sessions, setSessions, booked, setBooked }) {
+  const [sel, setSel] = useState(null);
+
+  const confirm = (cls) => {
+    setBooked(p=>[...p, cls.id]);
+    setClasses(p=>p.map(c=>c.id===cls.id?{...c,booked:c.booked+1}:c));
+    setSessions(p=>p-1);
+    setSel(null);
+  };
+  const cancel = (cls) => {
+    setBooked(p=>p.filter(id=>id!==cls.id));
+    setClasses(p=>p.map(c=>c.id===cls.id?{...c,booked:c.booked-1}:c));
+    setSessions(p=>p+1);
+    setSel(null);
+  };
+
+  return (
+    <div>
+      <div className="ph">
+        <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between"}}>
+          <div>
+            <div className="ph-title">Horario semanal</div>
+            <div className="ph-sub">Semana del 24 al 29 de marzo · 2026</div>
+          </div>
+          <div className="leg">
+            <span className="ltag somatic">Somatic Training</span>
+            <span className="ltag fiber">Fiber Nexus</span>
+            <span className="ltag neuro">Neuro Boost</span>
+          </div>
+        </div>
+      </div>
+      <div className="sched-grid">
+        {DAYS.map((d,i) => (
+          <div key={i} className="day-col">
+            <div className={`day-hd ${i===TODAY?"today":""}`}>
+              <div className="day-nm">{d}</div>
+              <div className="day-dt">{DATES[i]}</div>
+            </div>
+            {classes.filter(c=>c.day===i).sort((a,b)=>a.time.localeCompare(b.time)).map(cls=>(
+              <ClassCard key={cls.id} cls={cls} onClick={setSel} booked={booked.includes(cls.id)} />
+            ))}
+          </div>
+        ))}
+      </div>
+      {sel && (
+        <BookingModal cls={sel} sessions={sessions} booked={booked.includes(sel.id)}
+          onClose={()=>setSel(null)} onConfirm={confirm} onCancel={cancel} />
+      )}
+    </div>
+  );
+}
+
+// ── VIEW: Packages ─────────────────────────────────────────────────────────
+function PackagesView({ sessions, setSessions }) {
+  const [selPkg, setSelPkg] = useState(null);
+  const [showPay, setShowPay] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type="success") => {
+    setToast({msg,type});
+    setTimeout(()=>setToast(null),3500);
+  };
+
+  const handleSuccess = (pkg) => {
+    const add = pkg.sessions===999 ? 30 : pkg.sessions;
+    setSessions(p=>p+add);
+    setShowPay(false); setSelPkg(null);
+    showToast(`Paquete ${pkg.name} activado · +${add} sesiones`,"success");
+  };
+
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-title">Paquetes & Pagos</div>
+        <div className="ph-sub">Selecciona el plan que se ajusta a tu ritmo</div>
+      </div>
+      <div className="pkg-status">
+        <div className="psg-icon">🎟️</div>
+        <div className="psg-info">
+          <div className="psg-label">Sesiones disponibles</div>
+          <div className="psg-val">{sessions} <span>sesiones activas</span></div>
+        </div>
+        <div style={{fontSize:11,color:"var(--text-muted)"}}>Paquete Core · Vence 10 Abr</div>
+      </div>
+      <div className="sec-hd"><div className="sec-title">Planes disponibles</div></div>
+      <div className="pkg-grid">
+        {PACKAGES.map(p=>(
+          <div key={p.id} className={`pkg-card ${p.pop?"pop":""} ${selPkg?.id===p.id?"sel":""}`} onClick={()=>setSelPkg(p)}>
+            <div className="pkg-nm">{p.name}</div>
+            <div className="pkg-ses">{p.sessions===999?"∞":p.sessions}<span> ses.</span></div>
+            <div className="pkg-div"/>
+            <div className="pkg-price">{cop(p.price)}</div>
+            <div className="pkg-valid">Válido {p.validity}</div>
+          </div>
+        ))}
+      </div>
+      {selPkg && (
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:4}}>
+          <button className="bo" onClick={()=>setSelPkg(null)}>Cancelar</button>
+          <button className="bp" onClick={()=>setShowPay(true)}>
+            Adquirir {selPkg.name} · {cop(selPkg.price)}
+          </button>
+        </div>
+      )}
+      {showPay && selPkg && (
+        <PaymentModal pkg={selPkg} onClose={()=>setShowPay(false)} onSuccess={handleSuccess} />
+      )}
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
+    </div>
+  );
+}
+
+// ── VIEW: Profile ──────────────────────────────────────────────────────────
+function ProfileView({ sessions }) {
+  const lc = {somatic:0,fiber:0,neuro:0};
+  HISTORY.forEach(h=>{ if(h.status==="attended") lc[h.linea]++; });
+  const total = HISTORY.filter(h=>h.status==="attended").length;
+  const top = Object.entries(lc).sort((a,b)=>b[1]-a[1])[0];
+
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-title">Mi Perfil</div>
+        <div className="ph-sub">Historial, estadísticas y actividad</div>
+      </div>
+      <div className="stats-row">
+        <div className="stat-c"><div className="stat-v g">{total}</div><div className="stat-l">Clases asistidas</div></div>
+        <div className="stat-c"><div className="stat-v">{sessions}</div><div className="stat-l">Sesiones disponibles</div></div>
+        <div className="stat-c"><div className="stat-v">{HISTORY.filter(h=>h.status==="missed").length}</div><div className="stat-l">No asistidas</div></div>
+        <div className="stat-c"><div className="stat-v g">5</div><div className="stat-l">Racha actual</div></div>
+      </div>
+      <div className="two-col" style={{marginBottom:14}}>
+        <div className="card">
+          <div className="sec-title">Líneas Foco</div>
+          <div className="linea-bars">
+            {Object.entries(lc).map(([k,v])=>(
+              <div key={k} className="lb-item">
+                <span className={`lb-lbl linea-inline ${k}`} style={{width:140}}>{LINEAS[k].name}</span>
+                <div className="lb-track"><div className="lb-fill" style={{width:`${total>0?v/total*100:0}%`,background:LINEAS[k].color}}/></div>
+                <span className="lb-n">{v}</span>
+              </div>
+            ))}
+          </div>
+          {top && (
+            <div style={{marginTop:14,padding:"9px 12px",background:"var(--gold-dim)",borderRadius:8}}>
+              <div style={{fontSize:10,color:"var(--text-muted)"}}>Tu línea principal</div>
+              <div style={{fontSize:14,fontWeight:600,color:"var(--gold)"}}>{LINEAS[top[0]].name}</div>
+            </div>
+          )}
+        </div>
+        <div className="card">
+          <div className="sec-title">Clases favoritas</div>
+          {["Quantum Flow","Neuro HIIT","Fiber Activate"].map((nm,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:i<2?"1px solid var(--border)":"none"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{nm}</div>
+                <div style={{fontSize:11,color:"var(--text-muted)"}}>{["Somatic Training","Neuro Boost Interval","Fiber Nexus Dynamics"][i]}</div>
+              </div>
+              <div style={{fontFamily:"Cormorant Garamond,serif",fontSize:24,color:"var(--gold)"}}>{3-i}×</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card">
+        <div className="sec-title">Historial de clases</div>
+        <table className="hist-table">
+          <thead>
+            <tr><th>Clase</th><th>Línea Foco</th><th>Fecha</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            {HISTORY.map((h,i)=>(
+              <tr key={i}>
+                <td>{h.name}</td>
+                <td><span className={`linea-inline ${h.linea}`}>{LINEAS[h.linea].name}</span></td>
+                <td>{h.date}</td>
+                <td><span className={`sbadge ${h.status==="attended"?"at":"ms"}`}>{h.status==="attended"?"Asistida":"No asistida"}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── VIEW: Admin ────────────────────────────────────────────────────────────
+function AdminView() {
+  const [tab, setTab] = useState("payments");
+  const [pays, setPays] = useState(INIT_PAYMENTS);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg,type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3200); };
+  const approve = (id) => { setPays(p=>p.map(x=>x.id===id?{...x,status:"approved"}:x)); showToast("Pago aprobado · Sesiones activadas","success"); };
+  const reject  = (id) => { setPays(p=>p.map(x=>x.id===id?{...x,status:"rejected"}:x)); showToast("Pago rechazado · Usuario notificado","error"); };
+  const pending = pays.filter(p=>p.status==="pending").length;
+
+  const USERS = [
+    {nm:"María Fernanda",pkg:"Core",ses:3},
+    {nm:"Laura Gutiérrez",pkg:"Core",ses:8},
+    {nm:"Sofía Restrepo",pkg:"Elite",ses:0},
+    {nm:"Valentina Cruz",pkg:"Starter",ses:16},
+    {nm:"Ana María Londoño",pkg:"Core",ses:4},
+  ];
+  const AV_COLORS = [["var(--somatic)","var(--gold)"],["var(--fiber)","var(--somatic)"],["var(--neuro)","var(--fiber)"],["var(--gold)","var(--neuro)"],["var(--somatic)","var(--fiber)"]];
+
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-title">Panel de Administración</div>
+        <div className="ph-sub">Gestión de clases, pagos y usuarias</div>
+      </div>
+      <div className="tabs">
+        <div className={`tab ${tab==="payments"?"active":""}`} onClick={()=>setTab("payments")}>
+          Pagos {pending>0&&<span className="mbadge">{pending}</span>}
+        </div>
+        <div className={`tab ${tab==="classes"?"active":""}`} onClick={()=>setTab("classes")}>Clases</div>
+        <div className={`tab ${tab==="users"?"active":""}`} onClick={()=>setTab("users")}>Usuarias</div>
+      </div>
+
+      {tab==="payments" && (
+        <div>
+          <div className="sec-hd">
+            <div className="sec-title">Comprobantes de transferencia</div>
+            <span style={{fontSize:12,color:"var(--text-muted)"}}>{pending} pendientes</span>
+          </div>
+          {pays.length===0 && <div className="empty"><div className="ei">🎉</div><p>Sin pagos pendientes</p></div>}
+          {pays.map(p=>(
+            <div key={p.id} className="pend-item">
+              <div className="pi-doc" style={{background:p.status==="approved"?"rgba(93,212,160,0.1)":p.status==="rejected"?"rgba(232,112,112,0.08)":undefined}}>
+                {p.status==="approved"?"✅":p.status==="rejected"?"❌":"📄"}
+              </div>
+              <div className="pi-info">
+                <div className="pi-user">{p.user}</div>
+                <div className="pi-det">{p.pkg} · {p.amount} · {p.date}</div>
+                <div className="pi-file">{p.file}</div>
+              </div>
+              {p.status==="pending"
+                ? <div style={{display:"flex",gap:7}}>
+                    <button className="abtn abtn-no" onClick={()=>reject(p.id)}>Rechazar</button>
+                    <button className="abtn abtn-ok" onClick={()=>approve(p.id)}>Aprobar</button>
+                  </div>
+                : <span className={`sbadge ${p.status==="approved"?"at":"ms"}`}>{p.status==="approved"?"Aprobado":"Rechazado"}</span>
+              }
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab==="classes" && (
+        <div>
+          <div className="sec-hd">
+            <div className="sec-title">Clases programadas</div>
+            <button className="bp" style={{padding:"7px 14px",fontSize:12}}>+ Nueva clase</button>
+          </div>
+          {INIT_CLASSES.map(cls=>(
+            <div key={cls.id} className="cls-row">
+              <div className="cls-line" style={{background:cls.linea==="somatic"?"var(--somatic)":cls.linea==="fiber"?"var(--fiber)":"var(--neuro)"}}/>
+              <div className="cls-info">
+                <div className="cls-nm">{cls.name}</div>
+                <div className="cls-det">{DAYS[cls.day]} · {cls.time} · {cls.dur}min · {cls.location}</div>
+              </div>
+              <span className={`type-badge ${cls.type}`} style={{margin:0}}>{cls.type==="quantum7d"?"Q7D":"MC"}</span>
+              <div className="cls-cupos">
+                <div className="cv" style={{color:cls.booked>=cls.cupos?"var(--danger)":undefined}}>{cls.booked}/{cls.cupos}</div>
+                <div className="cl">cupos</div>
+              </div>
+              <button className="bo" style={{padding:"5px 10px",fontSize:11}}>Editar</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab==="users" && (
+        <div>
+          <div className="sec-hd">
+            <div className="sec-title">Usuarias activas</div>
+            <button className="bp" style={{padding:"7px 14px",fontSize:12}}>+ Agregar</button>
+          </div>
+          {USERS.map((u,i)=>(
+            <div key={i} className="u-row">
+              <div className="u-avl" style={{background:`linear-gradient(135deg,${AV_COLORS[i][0]},${AV_COLORS[i][1]})`}}>
+                {u.nm.split(" ").map(n=>n[0]).slice(0,2).join("")}
+              </div>
+              <div style={{flex:1}}>
+                <div className="u-nm2">{u.nm}</div>
+                <div className="u-pkg">Paquete {u.pkg} · {u.ses} sesiones</div>
+              </div>
+              <span className={`sbadge ${u.ses>0?"at":"ms"}`}>{u.ses>0?"Activa":"Sin sesiones"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
+    </div>
+  );
+}
+
+// ── APP ────────────────────────────────────────────────────────────────────
+function App() {
+  const [view, setView] = useState("schedule");
+  const [sessions, setSessions] = useState(3);
+  const [classes, setClasses] = useState(INIT_CLASSES);
+  const [booked, setBooked] = useState([]);
+
+  const NAV = [
+    {id:"schedule", ico:"📅", label:"Horario semanal"},
+    {id:"packages", ico:"🎟️", label:"Paquetes"},
+    {id:"profile",  ico:"👤", label:"Mi perfil"},
+  ];
+  const ADMIN_NAV = [
+    {id:"admin", ico:"⚙️", label:"Administración"},
+  ];
+
+  return (
+    <div style={{display:"flex",height:"100vh"}}>
+      <div className="sb">
+        <div className="sb-logo">
+          <div className="sb-logo-name">Studio NM</div>
+          <div className="sb-logo-sub">Quantum 7D · Reservas</div>
+        </div>
+        <div className="sb-section">
+          <div className="sb-label">Principal</div>
+          {NAV.map(n=>(
+            <div key={n.id} className={`sb-item ${view===n.id?"active":""}`} onClick={()=>setView(n.id)}>
+              <span className="ico">{n.ico}</span>{n.label}
+            </div>
+          ))}
+        </div>
+        <div className="sb-section">
+          <div className="sb-label">Gestión</div>
+          {ADMIN_NAV.map(n=>(
+            <div key={n.id} className={`sb-item ${view===n.id?"active":""}`} onClick={()=>setView(n.id)}>
+              <span className="ico">{n.ico}</span>{n.label}
+            </div>
+          ))}
+        </div>
+        <div className="sb-foot">
+          <div className="u-chip">
+            <div className="u-av">MF</div>
+            <div>
+              <div className="u-name">María Fernanda</div>
+              <div className="u-ses">{sessions} sesiones activas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="main">
+        {view==="schedule" && (
+          <ScheduleView classes={classes} setClasses={setClasses}
+            sessions={sessions} setSessions={setSessions}
+            booked={booked} setBooked={setBooked} />
+        )}
+        {view==="packages" && <PackagesView sessions={sessions} setSessions={setSessions} />}
+        {view==="profile"  && <ProfileView sessions={sessions} />}
+        {view==="admin"    && <AdminView />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
